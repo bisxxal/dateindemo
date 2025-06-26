@@ -1,0 +1,30 @@
+# Step 1: Build stage
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# Copy only necessary files to build
+COPY . .
+
+# Optional: Build the app (if needed, e.g., for transpilation)
+# RUN npm run build
+
+# Step 2: Production stage
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy only the runtime essentials from build
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/prisma ./prisma  
+COPY --from=build /app/.env ./  
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev:docker"]

@@ -1,0 +1,174 @@
+ 
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id            String @id @default(cuid())
+  name          String?
+  email         String    @unique
+    
+  image         String?
+  profile        Profile?   
+  verified     Boolean   @default(false)  
+  likesGiven    Like[]    @relation("LikesGiven")
+  likesReceived Like[]    @relation("LikesReceived")
+  emailVerified  DateTime? @map("email_verified")
+  photos        Photo[]
+
+  reported   reportedUsers[] @relation("Reporter")
+ 
+  messages     Message[]
+  participants ChatParticipant[]
+
+  accounts Account[]
+  sessions Session[]
+
+  createdAt     DateTime  @default(now())
+}
+ 
+
+model Chat {
+  id           String             @id @default(cuid())
+  participants ChatParticipant[]
+  messages     Message[]
+  createdAt    DateTime           @default(now())
+}
+
+model ChatParticipant {
+  id      String  @id @default(cuid())
+  userId  String
+  chatId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chat    Chat    @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chatId])
+  @@index([chatId])
+  @@index([userId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  senderId  String
+  chatId    String
+  content   String
+  createdAt DateTime @default(now())
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, createdAt])
+  @@index([senderId])
+}
+
+model Profile{
+  id       String @id @default(cuid())
+  userId   String @unique
+  bio           String?
+  age           Int?
+  lookingFor    String?  
+  height      Int?
+  gender        String? @default("male")
+  languages     String? 
+  job           String?
+  livingIn        String?  
+  batch       String? 
+  location      String?
+  keywords    Keyword[]  
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Keyword {
+  id      String @id @default(cuid())
+  name    String @unique
+  user    Profile []
+}
+model Photo {
+  id       String @id @default(cuid())
+  userId    String
+  url       String
+  user      User   @relation(fields: [userId], references: [id])
+}
+
+model Like {
+  id       String @id @default(cuid())
+  giverId     String
+  receiverId  String
+  liked       Boolean   @default(false)
+  giver       User      @relation("LikesGiven", fields: [giverId], references: [id] , onDelete: Cascade)
+  receiver    User      @relation("LikesReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  matched    Boolean  @default(false)
+
+  @@unique([giverId, receiverId])
+  @@index([giverId])
+  @@index([receiverId])
+}
+
+ 
+
+model bug {
+  id       String @id @default(cuid())
+  userId    String  
+  titel  String
+  description String?
+  createdAt DateTime @default(now())
+}
+model reportedUsers{
+  id  String @id @default(cuid())
+  reporterId String
+  reportedId String
+  reason     String?
+
+  reporter   User     @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  @@index([reporterId])
+}
+
+model verified {
+  id     String @id @default(cuid())
+  userId String
+  rollNo String
+}
+ 
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
